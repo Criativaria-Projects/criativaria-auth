@@ -2,6 +2,10 @@ name = "criativaria-auth"
 main = "src/index.js"
 compatibility_date = "2026-07-02"
 
+routes = [
+  { pattern = "auth.criativaria.com", custom_domain = true }
+]
+
 [vars]
 # Origens autorizadas a receber tokens SSO (proteção contra open redirect).
 # Uma por site de staging, separadas por vírgula.
