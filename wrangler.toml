@@ -7,7 +7,7 @@ compatibility_date = "2026-07-02"
 [vars]
 # Origens autorizadas a receber tokens SSO (proteção contra open redirect).
 # Uma por site de staging, separadas por vírgula.
-ALLOWED_ORIGINS = "https://criativaria-clt-pj.pages.dev"
+ALLOWED_ORIGINS = "https://criativaria-clt-pj.pages.dev,https://admin.criativaria.com"
 DISCORD_CLIENT_ID = "1517548885038338140"
 DISCORD_GUILD_ID = "895505900016631839"
 
