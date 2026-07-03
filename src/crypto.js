@@ -1,14 +1,8 @@
 // HMAC-SHA256 signing via Web Crypto — same token format used across
 // Criativaria staging gates: base64url(payload).base64url(signature)
 
-function b64url(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
-}
-
-function b64urlString(str) {
+function b64urlEncode(input) {
+  const str = input instanceof ArrayBuffer ? String.fromCharCode(...new Uint8Array(input)) : input
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
@@ -27,10 +21,10 @@ async function getKey(secret) {
 }
 
 export async function sign(payload, secret, durationMs) {
-  const data = b64urlString(JSON.stringify({ ...payload, exp: Date.now() + durationMs }))
+  const data = b64urlEncode(JSON.stringify({ ...payload, exp: Date.now() + durationMs }))
   const key = await getKey(secret)
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data))
-  return `${data}.${b64url(sig)}`
+  return `${data}.${b64urlEncode(sig)}`
 }
 
 export async function verify(token, secret) {

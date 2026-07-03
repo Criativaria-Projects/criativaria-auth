@@ -46,6 +46,25 @@ function resolveTarget(rawTo, env) {
   return null
 }
 
+function callbackUrl(origin) {
+  return `${origin}/callback`
+}
+
+function stateCookie(value, maxAge) {
+  return `cri_hub_state=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`
+}
+
+function getCookie(request, name) {
+  return (request.headers.get('Cookie') || '').match(new RegExp(`${name}=([^;]+)`))?.[1]
+}
+
+async function discordApi(path, accessToken) {
+  const res = await fetch(`https://discord.com/api${path}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return res.json()
+}
+
 async function login(url, request, env) {
   const target = resolveTarget(url.searchParams.get('to') || '', env)
   if (!target) return new Response('Destino não permitido.', { status: 400 })
@@ -53,7 +72,7 @@ async function login(url, request, env) {
   const state = await sign({ to: target.href, nonce: crypto.randomUUID() }, env.SSO_SECRET, STATE_TTL_MS)
   const params = new URLSearchParams({
     client_id: env.DISCORD_CLIENT_ID,
-    redirect_uri: `${url.origin}/callback`,
+    redirect_uri: callbackUrl(url.origin),
     response_type: 'code',
     scope: 'identify guilds',
     state,
@@ -62,7 +81,7 @@ async function login(url, request, env) {
     status: 302,
     headers: {
       Location: `https://discord.com/oauth2/authorize?${params}`,
-      'Set-Cookie': `cri_hub_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      'Set-Cookie': stateCookie(state, 600),
     },
   })
 }
@@ -70,7 +89,7 @@ async function login(url, request, env) {
 async function callback(url, request, env) {
   const code = url.searchParams.get('code')
   const returnedState = url.searchParams.get('state')
-  const cookieState = (request.headers.get('Cookie') || '').match(/cri_hub_state=([^;]+)/)?.[1]
+  const cookieState = getCookie(request, 'cri_hub_state')
 
   // estado precisa bater com o cookie E ter assinatura/validade íntegras
   if (!returnedState || returnedState !== cookieState) {
@@ -95,21 +114,16 @@ async function callback(url, request, env) {
         client_secret: env.DISCORD_CLIENT_SECRET,
         grant_type: 'authorization_code',
         code,
-        redirect_uri: `${url.origin}/callback`,
+        redirect_uri: callbackUrl(url.origin),
       }),
     })
     const { access_token } = await tokenRes.json()
     if (!access_token) return fail('token_failed')
 
-    const userRes = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    })
-    const user = await userRes.json()
-
-    const guildsRes = await fetch('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    })
-    const guilds = await guildsRes.json()
+    const [user, guilds] = await Promise.all([
+      discordApi('/users/@me', access_token),
+      discordApi('/users/@me/guilds', access_token),
+    ])
     const isMember = Array.isArray(guilds) && guilds.some((g) => g.id === env.DISCORD_GUILD_ID)
     if (!isMember) return fail('not_member')
 
@@ -122,7 +136,7 @@ async function callback(url, request, env) {
     dest.searchParams.set('token', ssoToken)
     dest.searchParams.set('to', target.pathname + target.search)
     const headers = new Headers({ Location: dest.href })
-    headers.append('Set-Cookie', 'cri_hub_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0')
+    headers.append('Set-Cookie', stateCookie('', 0))
     return new Response(null, { status: 302, headers })
   } catch (err) {
     console.error('hub callback error:', err)
