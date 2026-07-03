@@ -19,6 +19,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.84.1"
           command: deploy
 
       - name: Sync secrets
@@ -31,7 +32,7 @@ jobs:
           for key in DISCORD_CLIENT_SECRET SSO_SECRET; do
             value="${!key}"
             if [ -n "$value" ]; then
-              printf '%s' "$value" | npx wrangler secret put "$key"
+              printf '%s' "$value" | npx --yes wrangler@4.84.1 secret put "$key"
               echo "synced $key"
             else
               echo "skipped $key (sem secret no GitHub)"
