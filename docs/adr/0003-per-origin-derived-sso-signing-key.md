@@ -97,6 +97,34 @@ chave-por-origem E rejeita um token forjado p/ outra origem (teste).
   em decisão separada se virar risco (ADR futura: jti + one-time redemption).
 - (−) career-tools bloqueado até limpar suas branches (main pré-hub, código em `development`).
 
+## Estratégia de cutover do hub (decidido 2026-07-05)
+
+Como o token é assinado num só lugar e a chave é por-origem, cabia decidir se o
+cutover do hub (`sign` legado → `signSsoToken` derivado) seria **big-bang** (todos
+os sites de uma vez) ou **incremental por-origem** (um env `SSO_DERIVED_ORIGINS`
+allowlist; hub assina derivado só p/ origens cujos sites já fazem dual-accept).
+O incremental desacoplaria admin-panel do bloqueio do career-tools.
+
+**Decisão: ADIAR o cutover; NÃO construir o incremental por-origem.** Big-bang
+quando a frota inteira estiver pronta.
+
+Motivos (critic REVISE→wait, aceito):
+- **Sem vuln viva.** admin-panel já confere `aud === origin` estrito
+  (`src/worker/index.ts:183`) — a chave derivada só remove um risco FUTURO de
+  "esquecer o aud" que admin-panel não tem hoje. Upgrade defensivo, não correção.
+- **Dívida de caminho-duplo permanente.** O incremental deixa dois caminhos de
+  assinatura no hub + um allowlist, cuja limpeza depende do career-tools (sem dono
+  nem ETA) — tende a virar débito permanente.
+- **Desacoplar ≠ contornar.** O bloqueio real (branches do career-tools) deve ser
+  resolvido no seu próprio tempo, não roteado com dívida no hub.
+- Nada se perde ao esperar: a fundação está pronta (auth-crypto@0.2.0; admin-panel
+  já faz dual-accept, commit `f5ab285`, pin-testado). Quando a frota estiver
+  pronta, big-bang = um só caminho de assinatura, sem allowlist, sem débito.
+
+Se algum dia o incremental for reconsiderado: normalizar cada entrada de
+`SSO_DERIVED_ORIGINS` via `new URL(x).origin` (evita mismatch por barra final /
+porta / caixa que deixaria uma origem pronta silenciosamente no legado).
+
 ## Revisit when
 
 - Um site novo entrar em produção **antes** do rollout #3 completar → aplicar #3 nele
@@ -108,3 +136,7 @@ chave-por-origem E rejeita um token forjado p/ outra origem (teste).
   de um único.
 - career-tools continuar meio-migrado por >2 semanas → escalar a limpeza de branch como
   bloqueador próprio.
+- **Cutover adiado — reconsiderar quando:** career-tools ganhar dono+ETA <6 semanas;
+  OU um 2º site não-bloqueado (clt-pj) ficar pronto (muda custo/benefício); OU admin-panel
+  deixar de conferir `aud` (upgrade vira urgente). Gatilho de execução do big-bang: TODOS
+  os sites vivos fazendo dual-accept.
