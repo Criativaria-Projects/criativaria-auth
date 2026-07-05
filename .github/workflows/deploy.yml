@@ -14,9 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # registry-url + scope make setup-node write an auth-configured .npmrc at
+      # runtime from NODE_AUTH_TOKEN — the repo's own .npmrc is gitignored (it
+      # holds a real token locally), so CI must generate one this way.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@criativaria-projects'
 
       # PACKAGES_READ_TOKEN: classic PAT with read:packages, needed for
       # @criativaria-projects/auth-crypto (private GitHub Packages registry).
