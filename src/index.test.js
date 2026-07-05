@@ -45,6 +45,47 @@ describe('GET /login', () => {
     expect(res.status).toBe(400)
   })
 
+  it('rejects a non-https origin even if otherwise allowed', async () => {
+    const res = await worker.fetch(req('/login?to=http://allowed-site.example'), ENV)
+    expect(res.status).toBe(400)
+  })
+
+  // ── ALLOWED_ORIGIN_SUFFIXES (Cloudflare Pages preview subdomains, ADR 0002) ──
+  const SFX_ENV = { ...ENV, ALLOWED_ORIGIN_SUFFIXES: 'criativaria-linkedin-34m.pages.dev' }
+
+  it('accepts a preview subdomain matching an allowed project suffix', async () => {
+    const res = await worker.fetch(req('/login?to=https://development.criativaria-linkedin-34m.pages.dev/__staging_auth'), SFX_ENV)
+    expect(res.status).toBe(302)
+  })
+
+  it('accepts the bare project host equal to an allowed suffix', async () => {
+    const res = await worker.fetch(req('/login?to=https://criativaria-linkedin-34m.pages.dev'), SFX_ENV)
+    expect(res.status).toBe(302)
+  })
+
+  it('rejects a look-alike host that only matches the suffix without a label boundary', async () => {
+    // must not match `criativaria-linkedin-34m.pages.dev` — no leading-dot boundary
+    const res = await worker.fetch(req('/login?to=https://evilcriativaria-linkedin-34m.pages.dev'), SFX_ENV)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a different (unsuffixed / other-account) Pages project', async () => {
+    const res = await worker.fetch(req('/login?to=https://criativaria-linkedin.pages.dev'), SFX_ENV)
+    expect(res.status).toBe(400)
+  })
+
+  it('ignores a dangerous bare shared-zone suffix (pages.dev) and does not open the allowlist', async () => {
+    const danglerEnv = { ...ENV, ALLOWED_ORIGIN_SUFFIXES: 'pages.dev' }
+    const res = await worker.fetch(req('/login?to=https://attacker-project.pages.dev'), danglerEnv)
+    expect(res.status).toBe(400)
+  })
+
+  it('does not let a userinfo trick smuggle a disallowed host past the suffix check', async () => {
+    // URL.hostname is evil.example here, not the pages.dev part
+    const res = await worker.fetch(req('/login?to=https://criativaria-linkedin-34m.pages.dev@evil.example'), SFX_ENV)
+    expect(res.status).toBe(400)
+  })
+
   it('redirects to Discord and sets a signed state cookie for an allowed origin', async () => {
     const res = await worker.fetch(req('/login?to=https://allowed-site.example/dashboard'), ENV)
     expect(res.status).toBe(302)

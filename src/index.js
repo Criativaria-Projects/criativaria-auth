@@ -36,13 +36,50 @@ function allowedOrigins(env) {
     .filter(Boolean)
 }
 
+// Zonas multi-tenant compartilhadas: allowlistar o host pelado abriria o hub
+// para QUALQUER usuário Cloudflare. Um sufixo terminando nelas precisa de um
+// label de projeto à frente (>=3 labels), ex.: `projeto-hash.pages.dev` ok,
+// `pages.dev` recusado.
+const SHARED_TENANT_ZONES = ['pages.dev', 'workers.dev']
+
+// Sufixos autorizados para origens de preview do Cloudflare Pages
+// (`<branch>.<projeto>-<hash>.pages.dev`). Um subdomínio de um projeto Pages é
+// ligado exclusivamente à conta dona (só quem tem push no repo conectado gera
+// deploy; PR de fork não cria preview), então casar por sufixo do host do
+// projeto é seguro — evita allowlistar cada branch na mão. Ver ADR 0002.
+function allowedSuffixes(env) {
+  return (env.ALLOWED_ORIGIN_SUFFIXES || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .filter((sfx) => {
+      const dangerous =
+        SHARED_TENANT_ZONES.includes(sfx) ||
+        SHARED_TENANT_ZONES.some((z) => sfx.endsWith('.' + z) && sfx.split('.').length < 3)
+      if (dangerous) {
+        console.error(`ALLOWED_ORIGIN_SUFFIXES: sufixo perigoso ignorado "${sfx}" (zona compartilhada sem projeto)`)
+      }
+      return !dangerous
+    })
+}
+
 function resolveTarget(rawTo, env) {
+  let to
   try {
-    const to = new URL(rawTo)
-    if (allowedOrigins(env).includes(to.origin)) return to
+    to = new URL(rawTo)
   } catch {
-    /* URL inválida */
+    return null // URL inválida
   }
+  if (to.protocol !== 'https:') return null
+  if (allowedOrigins(env).includes(to.origin)) return to
+  // Match por sufixo de projeto Pages (subdomínios de preview). Usa hostname
+  // (via URL, imune a truques de userinfo/porta); o `.` inicial ancora o limite
+  // de label para `evilprojeto-hash.pages.dev` NÃO casar `projeto-hash.pages.dev`.
+  const host = to.hostname
+  for (const sfx of allowedSuffixes(env)) {
+    if (host === sfx || host.endsWith('.' + sfx)) return to
+  }
+  console.error(`resolveTarget: origem recusada ${to.origin}`)
   return null
 }
 
