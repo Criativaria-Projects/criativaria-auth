@@ -18,6 +18,17 @@ jobs:
         with:
           node-version: 22
 
+      # PACKAGES_READ_TOKEN: classic PAT with read:packages, needed for
+      # @criativaria-projects/auth-crypto (private GitHub Packages registry).
+      # Must run before the wrangler-action deploy step below — that action
+      # only installs wrangler itself, not this repo's own dependencies.
+      # See career-tools/docs/adr/0002-shared-auth-crypto-package-defer-jwt-migration.md
+      - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
+
+      - run: npm test
+
       - name: Deploy worker
         uses: cloudflare/wrangler-action@v3
         with:
