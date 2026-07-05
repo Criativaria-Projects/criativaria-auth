@@ -91,8 +91,17 @@ async function callback(url, request, env) {
   const returnedState = url.searchParams.get('state')
   const cookieState = getCookie(request, 'cri_hub_state')
 
-  // estado precisa bater com o cookie E ter assinatura/validade íntegras
-  if (!returnedState || returnedState !== cookieState) {
+  // O `state` é a fonte da verdade: HMAC assinado com nonce + TTL de 10min
+  // (verify() confere assinatura E validade). O cookie cri_hub_state é uma
+  // defesa extra (liga o state ao navegador que iniciou o login, contra
+  // login-CSRF). No mobile, o Discord entrega o fluxo ao app / reabre o
+  // retorno em outro contexto de navegador e o cookie se perde — então o
+  // cookie é verificado só quando presente; ausente, caímos na verificação
+  // por assinatura abaixo. Sem cookie válido nem state válido => rejeita.
+  if (!returnedState) {
+    return new Response('Estado de login inválido. Volte ao site e tente de novo.', { status: 400 })
+  }
+  if (cookieState && returnedState !== cookieState) {
     return new Response('Estado de login inválido. Volte ao site e tente de novo.', { status: 400 })
   }
   const state = await verify(returnedState, env.SSO_SECRET)
