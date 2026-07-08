@@ -8,12 +8,13 @@
  *   Discord → GET /callback                   (troca code, confere guild)
  *   hub → site /api/auth/sso?token=<HMAC 60s> (site verifica com SSO_SECRET e cria sessão própria)
  */
+import * as Sentry from '@sentry/cloudflare'
 import { sign, verify } from './crypto.js'
 
 const STATE_TTL_MS = 10 * 60 * 1000
 const SSO_TOKEN_TTL_MS = 60 * 1000
 
-export default {
+const handler = {
   async fetch(request, env) {
     const url = new URL(request.url)
     switch (url.pathname) {
@@ -28,6 +29,15 @@ export default {
     }
   },
 }
+
+export default Sentry.withSentry(
+  (env) => ({
+    dsn: env.SENTRY_DSN ?? 'https://3cec5434ea411f5ce55484274c938aea@o4511700575387648.ingest.us.sentry.io/4511701030469632',
+    environment: env.ENVIRONMENT?.includes('staging') ? 'staging' : 'production',
+    tracesSampleRate: 0.1,
+  }),
+  handler,
+)
 
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGINS || '')
