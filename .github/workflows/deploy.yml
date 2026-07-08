@@ -28,11 +28,7 @@ jobs:
       # Must run before the wrangler-action deploy step below — that action
       # only installs wrangler itself, not this repo's own dependencies.
       # See career-tools/docs/adr/0002-shared-auth-crypto-package-defer-jwt-migration.md
-      # `npm install` (not `npm ci`): the auth-crypto bump to ^0.2.1 could not be
-      # written to package-lock.json locally (no GitHub Packages auth on the dev
-      # box), so the lockfile lags. CI has the token and resolves the range here.
-      # TODO: regenerate the lockfile (npm install on an authed box) + restore `npm ci`.
-      - run: npm install
+      - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
 
