@@ -7,7 +7,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@criativaria-projects/auth-crypto": "^0.1.0"
+    "@criativaria-projects/auth-crypto": "^0.1.0",
+    "@sentry/cloudflare": "^10.64.0"
   },
   "devDependencies": {
     "vitest": "^4.1.9"

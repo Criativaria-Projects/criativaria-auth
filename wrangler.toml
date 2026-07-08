@@ -1,6 +1,7 @@
 name = "auth"
 main = "src/index.js"
 compatibility_date = "2026-07-02"
+compatibility_flags = ["nodejs_compat"]
 
 # routes: auth.criativaria.com volta na Fase B do ADR-0003 (zona ainda na conta antiga)
 
