@@ -1,9 +1,4 @@
-# Worker name must match the live worker bound to auth.criativaria.com on the
-# pre-Fase-B account (the zone still lives there). CI deployed 6 days of
-# changes to an unused `auth` worker on the Fase-B account while the domain
-# kept serving this one — the 2026-07-09 login outage (stale SSO_SECRET +
-# pre-0.2.1 sign). Rename only when the zone moves in Fase B (ADR-0003).
-name = "criativaria-auth"
+name = "auth"
 main = "src/index.js"
 compatibility_date = "2026-07-02"
 compatibility_flags = ["nodejs_compat"]
