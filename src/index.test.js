@@ -107,6 +107,13 @@ describe('GET /login', () => {
     const payload = await verify(stateToken, ENV.SSO_SECRET)
     expect(payload.to).toBe('https://allowed-site.example/dashboard')
   })
+
+  it('uses CANONICAL_ORIGIN for redirect_uri instead of the request origin, when set', async () => {
+    const CANON_ENV = { ...ENV, CANONICAL_ORIGIN: 'https://auth.criativaria.workers.dev' }
+    const res = await worker.fetch(req('/login?to=https://allowed-site.example/dashboard'), CANON_ENV)
+    const location = new URL(res.headers.get('Location'))
+    expect(location.searchParams.get('redirect_uri')).toBe('https://auth.criativaria.workers.dev/callback')
+  })
 })
 
 describe('GET /callback', () => {
@@ -202,6 +209,28 @@ describe('GET /callback', () => {
     // The audience MUST be the target origin — this is what stops a token
     // issued for one site being replayed against another (confused-deputy).
     expect(payload.aud).toBe('https://allowed-site.example')
+  })
+
+  it('token-exchange sends the same CANONICAL_ORIGIN redirect_uri as /login (must match exactly or Discord rejects)', async () => {
+    const CANON_ENV = { ...ENV, CANONICAL_ORIGIN: 'https://auth.criativaria.workers.dev' }
+    const { sign } = await import('./crypto.js')
+    const state = await sign({ to: 'https://allowed-site.example/app', nonce: 'n' }, CANON_ENV.SSO_SECRET, 10 * 60 * 1000)
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'discord-token' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-1' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'guild-123' }]), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    // Callback arrives on a DIFFERENT host than the canonical origin (e.g. a
+    // custom-domain cutover in flight) — CANONICAL_ORIGIN must win over url.origin.
+    const request = new Request(`https://some-other-host.example/callback?code=auth-code&state=${state}`, {
+      headers: { Cookie: `cri_hub_state=${state}` },
+    })
+    await worker.fetch(request, CANON_ENV)
+
+    const tokenExchangeBody = fetchMock.mock.calls[0][1].body
+    expect(tokenExchangeBody.get('redirect_uri')).toBe('https://auth.criativaria.workers.dev/callback')
   })
 
   it('redirects with not_member when the user is not in the required guild', async () => {

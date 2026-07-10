@@ -3,9 +3,15 @@ main = "src/index.js"
 compatibility_date = "2026-07-02"
 compatibility_flags = ["nodejs_compat"]
 
-# routes: auth.criativaria.com volta na Fase B do ADR-0003 (zona ainda na conta antiga)
+# routes: auth.criativaria.com volta na Fase B do ADR-0003
 
 [vars]
+# Origem canônica usada para montar o redirect_uri OAuth (login E token-exchange
+# DEVEM usar o mesmo valor — Discord rejeita se divergir). Evita a fragilidade de
+# `url.origin` dinâmico (incidente 2026-07-05: origin drift derrubou o allowlist
+# do Discord). Na Fase B (auth.criativaria.com ao vivo), registre AMBOS os
+# redirect_uri no app do Discord antes de trocar este valor. Ver auth#3.
+CANONICAL_ORIGIN = "https://auth.criativaria.workers.dev"
 # Origens autorizadas a receber tokens SSO (proteção contra open redirect).
 # Uma por site de staging, separadas por vírgula.
 ALLOWED_ORIGINS = "https://criativaria-clt-pj.pages.dev,https://calculadora.criativaria.com,https://admin.criativaria.com,https://posicionamento.criativaria.com"
