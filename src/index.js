@@ -32,7 +32,7 @@ const handler = {
 
 export default Sentry.withSentry(
   (env) => ({
-    dsn: env.SENTRY_DSN ?? 'https://3cec5434ea411f5ce55484274c938aea@o4511700575387648.ingest.us.sentry.io/4511701030469632',
+    dsn: env.SENTRY_DSN,
     environment: env.ENVIRONMENT?.includes('staging') ? 'staging' : 'production',
     tracesSampleRate: 0.1,
   }),
