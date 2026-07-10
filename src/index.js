@@ -93,8 +93,8 @@ function resolveTarget(rawTo, env) {
   return null
 }
 
-function callbackUrl(origin) {
-  return `${origin}/callback`
+function callbackUrl(env, url) {
+  return `${env.CANONICAL_ORIGIN || url.origin}/callback`
 }
 
 function stateCookie(value, maxAge) {
@@ -119,7 +119,7 @@ async function login(url, request, env) {
   const state = await sign({ to: target.href, nonce: crypto.randomUUID() }, env.SSO_SECRET, STATE_TTL_MS)
   const params = new URLSearchParams({
     client_id: env.DISCORD_CLIENT_ID,
-    redirect_uri: callbackUrl(url.origin),
+    redirect_uri: callbackUrl(env, url),
     response_type: 'code',
     scope: 'identify guilds',
     state,
@@ -170,7 +170,7 @@ async function callback(url, request, env) {
         client_secret: env.DISCORD_CLIENT_SECRET,
         grant_type: 'authorization_code',
         code,
-        redirect_uri: callbackUrl(url.origin),
+        redirect_uri: callbackUrl(env, url),
       }),
     })
     const { access_token } = await tokenRes.json()
