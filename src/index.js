@@ -13,6 +13,8 @@ import { sign, verify } from './crypto.js'
 
 const STATE_TTL_MS = 10 * 60 * 1000
 const SSO_TOKEN_TTL_MS = 60 * 1000
+const RATE_LIMIT_PER_MIN = 30
+const RATE_LIMIT_WINDOW_SEC = 120
 
 const handler = {
   async fetch(request, env) {
@@ -105,14 +107,36 @@ function getCookie(request, name) {
   return (request.headers.get('Cookie') || '').match(new RegExp(`${name}=([^;]+)`))?.[1]
 }
 
+async function checkRateLimit(ip, kv) {
+  const key = `rl:${ip}:${Math.floor(Date.now() / 60000)}`
+  const count = parseInt((await kv.get(key)) || '0', 10)
+  if (count >= RATE_LIMIT_PER_MIN) {
+    return false
+  }
+  await kv.put(key, String(count + 1), { expirationTtl: RATE_LIMIT_WINDOW_SEC })
+  return true
+}
+
+function getClientIp(request) {
+  return request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for')?.split(',')?.[0] || 'unknown'
+}
+
 async function discordApi(path, accessToken) {
   const res = await fetch(`https://discord.com/api${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
+  if (!res.ok) {
+    throw new Error(`Discord API error ${res.status}`)
+  }
   return res.json()
 }
 
 async function login(url, request, env) {
+  const ip = getClientIp(request)
+  if (!(await checkRateLimit(ip, env.RATE_LIMIT))) {
+    return new Response('Muitas tentativas. Tente novamente em breve.', { status: 429 })
+  }
+
   const target = resolveTarget(url.searchParams.get('to') || '', env)
   if (!target) return new Response('Destino não permitido.', { status: 400 })
 
@@ -134,6 +158,11 @@ async function login(url, request, env) {
 }
 
 async function callback(url, request, env) {
+  const ip = getClientIp(request)
+  if (!(await checkRateLimit(ip, env.RATE_LIMIT))) {
+    return new Response('Muitas tentativas. Tente novamente em breve.', { status: 429 })
+  }
+
   const code = url.searchParams.get('code')
   const returnedState = url.searchParams.get('state')
   const cookieState = getCookie(request, 'cri_hub_state')
@@ -156,8 +185,10 @@ async function callback(url, request, env) {
   if (!target) {
     return new Response('Sessão de login expirada. Volte ao site e tente de novo.', { status: 400 })
   }
-  const fail = (reason) =>
-    Response.redirect(`${target.origin}/?auth_error=${reason}`, 302)
+  const fail = (reason) => {
+    console.error(`auth fail: ${reason}`)
+    return Response.redirect(`${target.origin}/?auth=denied`, 302)
+  }
 
   if (!code) return fail('no_code')
 
@@ -173,6 +204,9 @@ async function callback(url, request, env) {
         redirect_uri: callbackUrl(env, url),
       }),
     })
+    if (!tokenRes.ok) {
+      return fail('provider_unavailable')
+    }
     const { access_token } = await tokenRes.json()
     if (!access_token) return fail('token_failed')
 
@@ -195,7 +229,7 @@ async function callback(url, request, env) {
     headers.append('Set-Cookie', stateCookie('', 0))
     return new Response(null, { status: 302, headers })
   } catch (err) {
-    console.error('hub callback error:', err)
+    console.error('hub callback error:', err.message || err.constructor.name)
     return fail('server_error')
   }
 }
