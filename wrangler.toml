@@ -28,8 +28,8 @@ DISCORD_GUILD_ID = "895505900016631839"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "placeholder-kv-namespace-id-set-via-wrangler"
-preview_id = "placeholder-kv-preview-id"
+id = "3529abdcbb8e4d39bb6be5f50df8b4b2"
+preview_id = "3529abdcbb8e4d39bb6be5f50df8b4b2"
 
 # Secrets (via `wrangler secret put` ou CI):
 #   DISCORD_CLIENT_SECRET — app do Discord (mesmo do admin panel)
