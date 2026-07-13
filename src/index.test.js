@@ -11,12 +11,26 @@ const ENV = {
   SSO_SECRET: 'sso-secret',
 }
 
+// KV mock mínimo para o RATE_LIMIT (contador em memória, um Map por teste)
+function makeKv() {
+  const store = new Map()
+  return {
+    async get(key) {
+      return store.has(key) ? store.get(key) : null
+    },
+    async put(key, value) {
+      store.set(key, value)
+    },
+  }
+}
+
 function req(path) {
   return new Request(`https://auth.example${path}`)
 }
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  ENV.RATE_LIMIT = makeKv()
 })
 
 describe('GET /health', () => {
@@ -48,6 +62,23 @@ describe('GET /login', () => {
   it('rejects a non-https origin even if otherwise allowed', async () => {
     const res = await worker.fetch(req('/login?to=http://allowed-site.example'), ENV)
     expect(res.status).toBe(400)
+  })
+
+  // ── rate limit (KV fixed-window por IP) ──
+
+  it('returns 429 after the per-minute limit is exceeded', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000) // congela a janela do contador
+    for (let i = 0; i < 30; i++) {
+      const res = await worker.fetch(req('/login?to=https://allowed-site.example'), ENV)
+      expect(res.status).toBe(302)
+    }
+    const res = await worker.fetch(req('/login?to=https://allowed-site.example'), ENV)
+    expect(res.status).toBe(429)
+  })
+
+  it('fails open (no 429) when the RATE_LIMIT binding is absent', async () => {
+    const res = await worker.fetch(req('/login?to=https://allowed-site.example'), { ...ENV, RATE_LIMIT: undefined })
+    expect(res.status).toBe(302)
   })
 
   // ── ALLOWED_ORIGIN_SUFFIXES (Cloudflare Pages preview subdomains, ADR 0002) ──
