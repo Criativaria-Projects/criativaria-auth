@@ -179,7 +179,7 @@ describe('GET /callback', () => {
     })
     const res = await worker.fetch(request, ENV)
     expect(res.status).toBe(302)
-    expect(res.headers.get('Location')).toBe('https://allowed-site.example/?auth_error=no_code')
+    expect(res.headers.get('Location')).toBe('https://allowed-site.example/?auth=denied')
   })
 
   it('happy path: exchanges code, confirms guild membership, issues an SSO token scoped to the target origin', async () => {
@@ -248,6 +248,6 @@ describe('GET /callback', () => {
     })
     const res = await worker.fetch(request, ENV)
     expect(res.status).toBe(302)
-    expect(res.headers.get('Location')).toBe('https://allowed-site.example/?auth_error=not_member')
+    expect(res.headers.get('Location')).toBe('https://allowed-site.example/?auth=denied')
   })
 })
