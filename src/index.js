@@ -108,13 +108,19 @@ function getCookie(request, name) {
 }
 
 async function checkRateLimit(ip, kv) {
-  const key = `rl:${ip}:${Math.floor(Date.now() / 60000)}`
-  const count = parseInt((await kv.get(key)) || '0', 10)
-  if (count >= RATE_LIMIT_PER_MIN) {
-    return false
+  // fail-open: o limiter nunca pode derrubar o login (rate limit da zona cobre o resto)
+  if (!kv) return true
+  try {
+    const key = `rl:${ip}:${Math.floor(Date.now() / 60000)}`
+    const count = parseInt((await kv.get(key)) || '0', 10)
+    if (count >= RATE_LIMIT_PER_MIN) {
+      return false
+    }
+    await kv.put(key, String(count + 1), { expirationTtl: RATE_LIMIT_WINDOW_SEC })
+    return true
+  } catch {
+    return true
   }
-  await kv.put(key, String(count + 1), { expirationTtl: RATE_LIMIT_WINDOW_SEC })
-  return true
 }
 
 function getClientIp(request) {
