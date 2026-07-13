@@ -14,7 +14,7 @@ compatibility_flags = ["nodejs_compat"]
 CANONICAL_ORIGIN = "https://auth.criativaria.com"
 # Origens autorizadas a receber tokens SSO (proteção contra open redirect).
 # Uma por site de staging, separadas por vírgula.
-ALLOWED_ORIGINS = "https://criativaria-clt-pj.pages.dev,https://calculadora.criativaria.com,https://admin.criativaria.com,https://posicionamento.criativaria.com"
+ALLOWED_ORIGINS = "https://criativaria-clt-pj.pages.dev,https://calculadora.criativaria.com,https://admin.criativaria.com,https://posicionamento.criativaria.com,https://boards.criativaria.com"
 # Sufixos de projeto Cloudflare Pages: cobrem TODOS os subdomínios de preview
 # (`<branch>.<host>`) sem precisar allowlistar cada branch. Use o HOST COMPLETO
 # auto-suffixado do projeto (ex.: `criativaria-linkedin-34m.pages.dev`), NUNCA o
