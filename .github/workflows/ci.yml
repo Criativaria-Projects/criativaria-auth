@@ -7,6 +7,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,6 +20,7 @@ jobs:
       # runtime a partir de NODE_AUTH_TOKEN (o .npmrc do repo é gitignored).
       - uses: actions/setup-node@v4
         with:
+          cache: npm
           node-version: 22
           registry-url: https://npm.pkg.github.com
           scope: '@criativaria-projects'
