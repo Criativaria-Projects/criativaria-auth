@@ -14,11 +14,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Mesmo padrão do deploy.yml: setup-node gera o .npmrc autenticado em
       # runtime a partir de NODE_AUTH_TOKEN (o .npmrc do repo é gitignored).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           cache: npm
           node-version: 22
