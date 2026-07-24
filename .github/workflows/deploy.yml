@@ -15,12 +15,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # registry-url + scope make setup-node write an auth-configured .npmrc at
       # runtime from NODE_AUTH_TOKEN — the repo's own .npmrc is gitignored (it
       # holds a real token locally), so CI must generate one this way.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://npm.pkg.github.com
@@ -38,7 +38,7 @@ jobs:
       - run: npm test
 
       - name: Deploy worker
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
