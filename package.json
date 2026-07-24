@@ -8,9 +8,9 @@
   },
   "dependencies": {
     "@criativaria-projects/auth-crypto": "^0.2.1",
-    "@sentry/cloudflare": "^10.64.0"
+    "@sentry/cloudflare": "^10.67.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }
